@@ -6,6 +6,7 @@ const app = express();
 
 app.use(express.json());
 
-app.use('/api/rules', rulesController.create);
+app.post('/api/rules', rulesController.create);
+app.delete('/api/rules/:id', rulesController.delete);
 
 app.listen(3333, () => console.log('server running!'));

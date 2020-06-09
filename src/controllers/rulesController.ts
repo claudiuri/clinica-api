@@ -107,7 +107,7 @@ class RulesController {
      
     // });
 
-    const newRule = { id: Date.now, ...req.body };
+    const newRule = { id: Date.now(), ...req.body };
 
     dataJson.rules.push(newRule);
 
@@ -118,12 +118,34 @@ class RulesController {
     return res.send(newRule);
   }
 
-  list = async (req: Request, resp: Response) => {
+  list = async (req: Request, res: Response) => {
 
   }
 
-  delete = async (req: Request, resp: Response) => {
+  delete = async (req: Request, res: Response) => {
 
+    const { id } = req.params;
+
+    const data = await fs.promises.readFile(this.FILE_PATH, 'utf8');
+
+    const parssedData = JSON.parse(data);
+
+    if (!id) 
+      return res.status(400).json({ message: 'Informe o id da regra de atendimento' });
+
+    const ruleForRemove = parssedData.rules.find((rule:any) =>  rule.id == id);
+
+    if (!ruleForRemove)
+      return res.status(404).json({ message: 'Regra de atendimento não encontrada' });
+    
+    // Remove regra de atendimento
+    parssedData.rules = parssedData.rules.filter((rule:any) =>  rule.id !== ruleForRemove.id);
+
+    const newData = JSON.stringify(parssedData);
+    
+    await fs.promises.writeFile(this.FILE_PATH, newData, 'utf8');
+
+    return res.send();
   }
 }
 
