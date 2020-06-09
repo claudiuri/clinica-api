@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { v4 as uuid } from 'uuid';
+import moment from 'moment';
 
 import { Request, Response } from 'express';
 import { checkExists, daysWeek } from '../util';
@@ -126,7 +126,43 @@ class RulesController {
 
     const parssedData = JSON.parse(data);
 
-    return res.json(parssedData.rules);
+    const { rules } = parssedData;
+
+    if (start && end) {
+      
+      let dateStart = moment(String(start), 'DD-MM-YYYY');
+      let dateEnd = moment(String(end), 'DD-MM-YYYY');
+
+      let ruleList = <any>[];
+
+      const diffDays = dateEnd.diff(dateStart, 'days');
+            
+      for (let i = 0; i <= diffDays; i++) {
+
+        rules.map((rule: any) => {
+
+            if (rule.type == this.RULE_TYPE_DAY) {
+                if (moment(rule.day, 'DD-MM-YYYY').format('DD-MM-YYYY') === dateStart.format('DD-MM-YYYY')) {
+                  this.addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals, ruleList)
+                }
+            }
+            else if (rule.type == this.RULE_TYPE_DAILY) {
+              this.addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals, ruleList)
+            }
+            else if (rule.type == this.RULE_TYPE_WEEKLY) {
+                if (rule.daysOfWeek.indexOf(moment(dateStart, 'DD-MM-YYYY').weekday()) >= 0) {
+                  this.addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals , ruleList)
+                }
+            }
+        });
+
+        dateStart.add(1, 'days')
+      }
+
+      return res.json(ruleList)
+    }
+
+    return res.json(rules);
   }
 
   delete = async (req: Request, res: Response) => {
@@ -153,6 +189,32 @@ class RulesController {
     await fs.promises.writeFile(this.FILE_PATH, newData, 'utf8');
 
     return res.send();
+  }
+
+  private addDayInList = (day: string, intervals: any[], list: any[]) => {
+    
+    let newRule = { day, intervals };
+    let wasAdded = false
+   
+    if (list.length > 0) {
+
+      list.forEach((rule, index) =>{
+        if (rule.day === newRule.day) {
+          wasAdded = true
+          list[index].intervals = rule.intervals.concat(newRule.intervals)
+        }
+      });
+    } 
+    else {
+      wasAdded = true
+      list.push(newRule)
+    }
+
+    if (!wasAdded) {
+      list.push(newRule)
+    }
+
+    return list
   }
 }
 
