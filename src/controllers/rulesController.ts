@@ -120,6 +120,13 @@ class RulesController {
 
   list = async (req: Request, res: Response) => {
 
+    const { start, end } = req.query;
+
+    const data = await fs.promises.readFile(this.FILE_PATH, 'utf8');
+
+    const parssedData = JSON.parse(data);
+
+    return res.json(parssedData.rules);
   }
 
   delete = async (req: Request, res: Response) => {
