@@ -1,5 +1,5 @@
 <h1 align="center">
-  Clinicas-Api 🩺
+  Clinica-Api 🩺
 </h1>
 
 <p align="center">Uma API REST para facilitar o gerenciamento de horários de uma clínica!</p>
