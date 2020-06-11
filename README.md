@@ -8,6 +8,13 @@
 
 - [Node.js](https://nodejs.org/en/)
 
+## 📚 Tecnologias
+
+- [Express](https://expressjs.com/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Jest](https://jestjs.io/en/)
+- [Moment](https://momentjs.com/)
+
 ## 🔥 Instalação e execução
 
 1. Faça um clone desse repositório;

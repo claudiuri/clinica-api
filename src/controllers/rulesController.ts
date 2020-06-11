@@ -3,12 +3,12 @@ import fs from 'fs';
 import moment from 'moment';
 
 import { Request, Response } from 'express';
-import { Rule, Interval } from '../interfaces';
+import { Interval } from '../interfaces';
 import { checkNewRuleShock, addDayInList, getDatesByInterval } from '../util';
 
 class RulesController {
 
-  private FILE_PATH: string = path.resolve(__dirname, '..', 'database.json');
+  private FILE_PATH: string = path.resolve(__dirname, '..', '..','database.json');
 
   RULE_TYPE_DAY: number = 0; // Um dia especifico
   RULE_TYPE_DAILY: number = 1; // Diariamente
