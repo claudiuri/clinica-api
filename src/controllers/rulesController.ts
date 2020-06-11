@@ -3,19 +3,20 @@ import fs from 'fs';
 import moment from 'moment';
 
 import { Request, Response } from 'express';
-import { checkExists, daysWeek } from '../util';
+import { Rule, Interval } from '../interfaces';
+import { checkNewRuleShock, addDayInList, getDatesByInterval } from '../util';
 
 class RulesController {
 
   private FILE_PATH: string = path.resolve(__dirname, '..', 'database.json');
 
-  private RULE_TYPE_DAY: number = 0; // Um dia especifico
-  private RULE_TYPE_DAILY: number = 1; // Diariamente
-  private RULE_TYPE_WEEKLY: number = 2; // Semanalmente
+  RULE_TYPE_DAY: number = 0; // Um dia especifico
+  RULE_TYPE_DAILY: number = 1; // Diariamente
+  RULE_TYPE_WEEKLY: number = 2; // Semanalmente
 
   create = async (req: Request, res: Response) => {
 
-    const { type, day, daysOfWeef, intervals } = req.body;
+    const { type, day, daysOfWeek, intervals } = req.body;
 
     if (type < 0 && type > 2) {
       return res.json({ message: 'Tipo de regra inválida' })
@@ -29,7 +30,7 @@ class RulesController {
       return res.json({ message: 'Informe a data do dia especifico' })
     }
 
-    if (type == this.RULE_TYPE_WEEKLY && daysOfWeef && daysOfWeef.length == 0) {
+    if (type == this.RULE_TYPE_WEEKLY && daysOfWeek && daysOfWeek.length == 0) {
       return res.json({ message: 'Informe os dias da semana' })
     }
 
@@ -37,33 +38,23 @@ class RulesController {
       return res.json({ message: 'Informe os intervalos' })
     }
 
-    let lasInterval:any = null;
+    let lasInterval:Interval;
 
-    intervals.forEach((interval: any, index: number) => {
+    // Valida intervalos
+    intervals.forEach((interval: Interval) => {
 
-      const { start, end } = interval;
-
-      // Transforma em uma array onde a primeira posição é a hora e segunda é o minuto
-      let horarioIni = start.split(":");
-      let horarioFim = end.split(":");
-
-      let dateNow = new Date();
-
-      let dataIni = new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate(), horarioIni[0], horarioIni[1]);
-      let dataFim = new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate(), horarioFim[0], horarioFim[1]);
-
-      if (dataIni >= dataFim) {
-        return res.status(400).json({ msg: 'Horário de atendimento inválido' });
+      let dates = getDatesByInterval(interval);
+      
+      if (dates.dateStart >= dates.dateEnd) {
+        return res.status(400).json({ message: 'Horário de atendimento inválido' });
       }
 
       if (lasInterval) {
-        
-        let lasIntervalHorarioFim = lasInterval.end.split(":");
 
-        let lasIntervalDataFim = new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate(), lasIntervalHorarioFim[0], lasIntervalHorarioFim[1]);
+        let lastIntervalDates = getDatesByInterval(lasInterval);
 
-        if (dataIni < lasIntervalDataFim) {
-          return res.status(400).json({ msg: 'Horário de atendimento inválido' });
+        if (dates.dateStart < lastIntervalDates.dateEnd) {
+          return res.status(400).json({ message: 'Horário de atendimento inválido' });
         }
       }
 
@@ -75,39 +66,18 @@ class RulesController {
 
     const dataJson = JSON.parse(data);
 
-    // dataJson.rules.forEach((rule:any) => {
-
-    //   switch (rule.type) {
-
-    //     case this.RULE_TYPE_DAY:
-    //       {
-    //         if (type == this.RULE_TYPE_DAY && checkExists(rule.intervals, intervals)) {
-    //           return res.status(400).json({ message: 'Regra já cadastrada.' });
-    //         }
-
-    //         break;
-    //       }
-    //     case this.RULE_TYPE_DAILY:
-    //       {
-    //         if (type == this.RULE_TYPE_DAILY && checkExists(rule.intervals, intervals)) {
-    //           return res.status(400).json({ message: 'Regra já cadastrada.' });
-    //         }
-    //         break;
-    //       }
-    //   case this.RULE_TYPE_WEEKLY:
-    //       {
-    //         if(type == this.RULE_TYPE_WEEKLY){
-    //           if (daysWeek(daysOfWeef, rule.daysOfWeef) && checkExists(rule.intervals, intervals)) {
-    //             return res.status(400).json({ message: 'Regra já cadastrada.' });
-    //           }
-    //         }
-    //         break;
-    //       }
-    //   }
-     
-    // });
-
     const newRule = { id: Date.now(), ...req.body };
+
+    newRule.daysOfWeek = newRule.daysOfWeek.sort();
+
+    if (dataJson.rules.length > 0) {
+
+      let exist = checkNewRuleShock(dataJson.rules, newRule);
+
+      if (exist) {
+        return res.status(400).json({ message: 'Conflito de Intervalo! Possui uma ou mais regras de atendimento cadastra nesse intervalo(s)' })
+      }
+    }
 
     dataJson.rules.push(newRule);
 
@@ -115,7 +85,7 @@ class RulesController {
 
     await fs.promises.writeFile(this.FILE_PATH, newData, 'utf8');
 
-    return res.send(newRule);
+    return res.json(newRule);
   }
 
   list = async (req: Request, res: Response) => {
@@ -143,15 +113,15 @@ class RulesController {
 
             if (rule.type == this.RULE_TYPE_DAY) {
                 if (moment(rule.day, 'DD-MM-YYYY').format('DD-MM-YYYY') === dateStart.format('DD-MM-YYYY')) {
-                  this.addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals, ruleList)
+                  addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals, ruleList)
                 }
             }
             else if (rule.type == this.RULE_TYPE_DAILY) {
-              this.addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals, ruleList)
+              addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals, ruleList)
             }
             else if (rule.type == this.RULE_TYPE_WEEKLY) {
                 if (rule.daysOfWeek.indexOf(moment(dateStart, 'DD-MM-YYYY').weekday()) >= 0) {
-                  this.addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals , ruleList)
+                  addDayInList(dateStart.format('DD-MM-YYYY'), rule.intervals , ruleList)
                 }
             }
         });
@@ -188,33 +158,7 @@ class RulesController {
     
     await fs.promises.writeFile(this.FILE_PATH, newData, 'utf8');
 
-    return res.send();
-  }
-
-  private addDayInList = (day: string, intervals: any[], list: any[]) => {
-    
-    let newRule = { day, intervals };
-    let wasAdded = false
-   
-    if (list.length > 0) {
-
-      list.forEach((rule, index) =>{
-        if (rule.day === newRule.day) {
-          wasAdded = true
-          list[index].intervals = rule.intervals.concat(newRule.intervals)
-        }
-      });
-    } 
-    else {
-      wasAdded = true
-      list.push(newRule)
-    }
-
-    if (!wasAdded) {
-      list.push(newRule)
-    }
-
-    return list
+    return res.send({ message: 'Regra de atendimento removida com sucesso' });
   }
 }
 

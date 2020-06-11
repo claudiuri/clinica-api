@@ -14,6 +14,7 @@
 2. Entre na pasta `cd clinicas-api`;
 3. Rode `npm install` dentro da pasta para instalar as dependências ;
 4. Na pasta execute `npm run dev` pra iniciar o servidor de desenvolvimento;
+5. Na pasta execute `npm run test` pra iniciar os testes;
 
 ## 📄 Documentação
 
